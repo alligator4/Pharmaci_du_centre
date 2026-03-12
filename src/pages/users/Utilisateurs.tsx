@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase, supabaseAuth } from '../../lib/supabase'
 import Layout from '../../components/layout/Layout'
 import type { Profile, UserRole } from '../../types'
-import { Plus, Edit2, Trash2, RefreshCw, UserCheck, AlertCircle } from 'lucide-react'
+import { Plus, Edit2, Trash2, RefreshCw, UserCheck, AlertCircle, KeyRound } from 'lucide-react'
+import ChangePasswordModal from '../../components/ChangePasswordModal'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -28,6 +29,7 @@ export default function Utilisateurs() {
   const [form, setForm] = useState({ name: '', email: '', role: 'employe' as UserRole, password: '' })
   const [saving, setSaving] = useState(false)
   const [saveStep, setSaveStep] = useState('')
+  const [resetPasswordFor, setResetPasswordFor] = useState<{ id: string; email: string } | null>(null)
 
   useEffect(() => { fetchProfiles() }, [])
 
@@ -161,6 +163,7 @@ export default function Utilisateurs() {
                       {ROLES.find(r => r.value === p.role)?.label || p.role}
                     </span>
                     <button onClick={() => openEdit(p)} className="p-1.5 hover:bg-teal-50 text-teal-600 rounded-lg"><Edit2 size={14} /></button>
+                    <button onClick={() => setResetPasswordFor({ id: p.id, email: p.email })} className="p-1.5 hover:bg-amber-50 text-amber-500 rounded-lg" title="Réinitialiser le mot de passe"><KeyRound size={14} /></button>
                     {p.id !== currentProfile?.id && (
                       <button onClick={() => handleDeactivate(p.id)} className="p-1.5 hover:bg-red-50 text-red-500 rounded-lg"><Trash2 size={14} /></button>
                     )}
@@ -223,6 +226,14 @@ export default function Utilisateurs() {
             </div>
           </div>
         </div>
+      )}
+
+      {resetPasswordFor && (
+        <ChangePasswordModal
+          targetUserId={resetPasswordFor.id}
+          targetUserName={resetPasswordFor.email}
+          onClose={() => setResetPasswordFor(null)}
+        />
       )}
     </Layout>
   )

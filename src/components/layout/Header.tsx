@@ -1,6 +1,8 @@
-import { Menu, Bell, LogOut, Cross } from 'lucide-react'
+import { Menu, Bell, LogOut, Cross, KeyRound } from 'lucide-react'
+import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import ChangePasswordModal from './ChangePasswordModal'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -17,6 +19,7 @@ const roleBadge: Record<string, { label: string; style: React.CSSProperties }> =
 export default function Header({ onMenuClick, title }: HeaderProps) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
+  const [showChangePwd, setShowChangePwd] = useState(false)
 
   async function handleSignOut() {
     await signOut()
@@ -26,6 +29,7 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
   const badge = roleBadge[profile?.role ?? 'employe']
 
   return (
+  <>
     <header className="sticky top-0 z-10 px-4 h-14 flex items-center justify-between"
       style={{
         background: 'rgba(255,255,255,0.97)',
@@ -76,6 +80,14 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
         </div>
 
         <button
+          onClick={() => setShowChangePwd(true)}
+          className="p-2 rounded-xl text-slate-500 hover:bg-amber-50 hover:text-amber-500 transition-colors"
+          title="Changer mon mot de passe"
+        >
+          <KeyRound size={18} />
+        </button>
+
+        <button
           onClick={handleSignOut}
           className="p-2 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-500 transition-colors"
           title="Déconnexion"
@@ -84,5 +96,10 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
         </button>
       </div>
     </header>
+
+    {showChangePwd && (
+      <ChangePasswordModal onClose={() => setShowChangePwd(false)} />
+    )}
+  </>
   )
 }
