@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f0f7f7;
+  color: #1e293b;
+}
+
+/* Scrollbar médicale */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #0d9488; }
+
+/* Animation pulse pour nouvelles commandes */
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(13, 148, 136, 0); }
+}
+.pulse-medical { animation: pulse-green 2s infinite; }
+
+/* Impression ticket */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white; }
+}
+
+/* Gradient médical de fond */
+.bg-medical-gradient {
+  background: linear-gradient(135deg, #0d9488 0%, #0891b2 50%, #1e40af 100%);
+}
+
+/* Card médicale */
+.card-medical {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(13,148,136,0.04);
+}

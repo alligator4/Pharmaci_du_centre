@@ -1,0 +1,103 @@
+# ============================================================
+# GUIDE DE DÉPLOIEMENT - PHARMAGROSS TCHAD
+# ============================================================
+
+## 1. Prérequis
+- Node.js 18+
+- Un compte Supabase (https://supabase.com)
+
+## 2. Configuration Supabase
+
+### Créer le projet
+1. Aller sur https://supabase.com > New Project
+2. Nommer: "pharmagross-tchad"
+3. Choisir la région la plus proche (ex: eu-central-1)
+
+### Exécuter les migrations
+1. Dashboard Supabase > SQL Editor
+2. Copier-coller le contenu de `supabase/migrations/001_initial.sql`
+3. Exécuter (Run)
+
+### Activer le Realtime
+1. Dashboard > Database > Replication
+2. Activer les tables: `commandes`, `lots`, `paiements`
+
+### Créer le bucket Storage
+1. Dashboard > Storage > New bucket
+2. Nom: `factures`
+3. Public: Oui
+
+### Récupérer les clés API
+1. Dashboard > Settings > API
+2. Copier: `Project URL` et `anon public key`
+
+## 3. Configuration de l'application
+
+Créer le fichier `.env` à la racine de `pharma-app/` :
+```
+VITE_SUPABASE_URL=https://VOTRE_PROJECT_ID.supabase.co
+VITE_SUPABASE_ANON_KEY=VOTRE_ANON_KEY
+```
+
+## 4. Créer le premier SuperAdmin
+
+Dans Supabase > Authentication > Users:
+1. Cliquer "Add user"
+2. Email: superadmin@pharmagross.td
+3. Password: (choisir un mot de passe fort)
+
+Puis dans SQL Editor:
+```sql
+UPDATE public.profiles 
+SET role = 'superadmin'
+WHERE email = 'superadmin@pharmagross.td';
+```
+
+## 5. Lancer l'application
+
+```bash
+cd pharma-app
+npm install
+npm run dev
+```
+
+Accès: http://localhost:5173
+
+## 6. Déploiement production
+
+```bash
+npm run build
+```
+Le dossier `dist/` peut être déployé sur:
+- Netlify (glisser-déposer le dossier dist)
+- Vercel (`vercel --prod`)
+- Nginx / Apache
+
+## 7. Architecture des rôles
+
+| Rôle       | Accès                                                    |
+|------------|----------------------------------------------------------|
+| superadmin | Tout + gestion utilisateurs                              |
+| admin      | Tout sauf gestion utilisateurs                           |
+| employe    | Stock, arrivages, commandes, paiements, alertes          |
+| client     | Catalogue + panier + ses propres commandes               |
+
+## 8. Logique FIFO
+
+Lors d'une commande client:
+1. Les lots sont triés par `prix_achat ASC, date_reception ASC`
+2. Le lot le moins cher est vendu en premier
+3. Prix de vente = prix_achat_lot + marge_médicament
+4. Le stock est décrémenter automatiquement via la fonction `get_fifo_price()`
+
+## 9. Fonctionnalités en temps réel
+
+Utilise Supabase Realtime:
+- Nouvelles commandes → notification sonore/visuelle sur le tableau de bord
+- Mise à jour des statuts en direct
+
+## 10. Génération PDF
+
+Les factures PDF sont générées avec jsPDF:
+- Stockées dans Supabase Storage (bucket `factures`)
+- Téléchargeables depuis la liste des commandes

@@ -1,0 +1,184 @@
+
+=======================================================
+  GUIDE COMPLET : PocketBase + Fly.io
+  Application PharmaGross Tchad
+=======================================================
+
+RÉSUMÉ DES CHANGEMENTS
+-----------------------
+- Supabase SUPPRIMÉ → PocketBase installé (v0.26.8)
+- Aucune limite de création d'utilisateurs
+- Base de données SQLite (embarquée dans PocketBase)
+- Gratuit à vie sur Fly.io
+
+
+=======================================================
+ÉTAPE 1 : INSTALLER ET LANCER POCKETBASE EN LOCAL
+=======================================================
+
+1. Télécharger PocketBase pour Windows :
+   https://github.com/pocketbase/pocketbase/releases/latest
+   → Télécharger : pocketbase_X.X.X_windows_amd64.zip
+
+2. Extraire le zip dans un dossier, ex: C:\pocketbase\
+
+3. Lancer PocketBase :
+   cd C:\pocketbase
+   .\pocketbase.exe serve
+
+4. Ouvrir l'admin UI :
+   http://127.0.0.1:8090/_/
+
+5. Créer un compte Super Admin PocketBase (email + mot de passe)
+
+=======================================================
+ÉTAPE 2 : CONFIGURER LES COLLECTIONS (SCHÉMA DB)
+=======================================================
+
+La migration automatique se trouve dans :
+  pocketbase-server/pb_migrations/1_initial.js
+
+Pour l'appliquer, copier les fichiers pb_migrations/ et pb_hooks/
+dans le dossier pb_data/ de votre PocketBase, puis relancer.
+
+OU configurer manuellement dans l'admin UI :
+http://127.0.0.1:8090/_/#/collections
+
+Collections à créer (dans cet ordre) :
+  1. clients     - nom, telephone, adresse, email, user (rel→users), actif
+  2. medicaments - nom, code, description, forme, dosage, marge, seuil_alerte, actif
+  3. lots        - medicament (rel), pays_origine, prix_achat, quantite, quantite_initiale, date_reception, date_expiration, numero_lot, actif
+  4. commandes   - client (rel), date_commande, total, statut (select), statut_paiement (select), numero_facture, facture_file (file), notes
+  5. commande_items - commande (rel), medicament (rel), quantite, prix_unitaire
+  6. paiements   - commande (rel), montant, date_paiement, mode_paiement, enregistre_par (rel→users)
+
+COLLECTION USERS (built-in) - Ajouter ces champs :
+  - role : Text (ou Select avec valeurs: superadmin, admin, employe, client)
+  - actif : Bool
+
+RÈGLES API IMPORTANTES (pour chaque collection, dans "API Rules") :
+  users:
+    List:   @request.auth.role = "superadmin"
+    View:   @request.auth.id = id || @request.auth.role = "superadmin"
+    Create: @request.auth.role = "superadmin" || @request.auth.role = "admin"
+    Update: @request.auth.id = id || @request.auth.role = "superadmin"
+    Delete: @request.auth.role = "superadmin"
+
+  commandes:
+    List/View: @request.auth.role = "superadmin" || @request.auth.role = "admin" || @request.auth.role = "employe" || (@request.auth.role = "client" && client.user = @request.auth.id)
+    Create: @request.auth.id != ""
+    Update: @request.auth.role = "superadmin" || @request.auth.role = "admin" || @request.auth.role = "employe"
+
+=======================================================
+ÉTAPE 3 : CRÉER LE PREMIER SUPERADMIN DE L'APP
+=======================================================
+
+Dans l'admin UI PocketBase → Collections → users → + New record :
+  email: superadmin@pharma.td
+  password: (choisir)
+  name: Super Admin
+  role: superadmin
+  actif: true
+
+=======================================================
+ÉTAPE 4 : CONFIGURER LE FICHIER .ENV DE L'APP REACT
+=======================================================
+
+Modifier C:\...\pharma-app\.env :
+  VITE_PB_URL=http://127.0.0.1:8090
+
+(En production Fly.io, remplacer par votre URL Fly.io)
+
+=======================================================
+ÉTAPE 5 : LANCER L'APPLICATION EN LOCAL
+=======================================================
+
+Terminal 1 - PocketBase :
+  cd C:\pocketbase
+  .\pocketbase.exe serve
+
+Terminal 2 - React :
+  cd pharma-app
+  npm run dev
+
+Accéder à : http://localhost:5173
+Login avec le superadmin créé à l'étape 3.
+
+=======================================================
+ÉTAPE 6 : DÉPLOYER POCKETBASE SUR FLY.IO (GRATUIT)
+=======================================================
+
+1. Installer flyctl sur Windows :
+   powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
+   # OU via winget :
+   winget install Fly.io.flyctl
+
+2. Se connecter à Fly.io (créer un compte gratuit sur fly.io) :
+   fly auth login
+
+3. Déployer depuis le dossier pocketbase-server/ :
+   cd pocketbase-server
+   fly launch --name pharma-pb --region cdg --no-deploy
+   fly volumes create pb_data --size 1 --region cdg
+   fly deploy
+
+4. Votre URL PocketBase sera :
+   https://pharma-pb.fly.dev
+   Admin UI : https://pharma-pb.fly.dev/_/
+
+5. Mettre à jour le .env de l'app React :
+   VITE_PB_URL=https://pharma-pb.fly.dev
+
+=======================================================
+ÉTAPE 7 : DÉPLOYER LE FRONTEND REACT (GRATUIT)
+=======================================================
+
+OPTION A - Vercel (recommandé, le plus simple) :
+  1. Créer compte sur vercel.com
+  2. Lier votre repo GitHub
+  3. Ajouter variable d'environnement :
+     VITE_PB_URL = https://pharma-pb.fly.dev
+  4. Deploy !
+
+OPTION B - Fly.io également :
+  Ajouter un Dockerfile dans pharma-app/ et déployer avec fly.
+
+=======================================================
+COMPARAISON SUPABASE vs POCKETBASE
+=======================================================
+
+Supabase (ancien)              PocketBase (nouveau)
+---------------------          -------------------
+supabase.from('x').select()    pb.collection('x').getFullList()
+.eq('id', id)                  filter: `id = "${id}"`
+.single()                      .getOne(id)
+.insert({...})                 .create({...})
+.update({...}).eq('id', id)    .update(id, {...})
+.delete().eq('id', id)         .delete(id)
+.channel().subscribe()         .subscribe('*', cb)
+supabase.auth.signIn()         pb.collection('users').authWithPassword()
+supabase.auth.signOut()        pb.authStore.clear()
+supabase.storage.upload()      FormData + pb.collection().update()
+3 signups/heure (limite)       AUCUNE LIMITE ✓
+
+=======================================================
+DONNÉES DE TEST
+=======================================================
+
+Créer via l'admin UI PocketBase (http://127.0.0.1:8090/_/) :
+
+1. Collections → users → 5 utilisateurs :
+   - admin@pharma.td / Admin PharmaGross / role: admin
+   - employe@pharma.td / Ali Mahamat / role: employe
+   - client1@pharma.td / Pharmacie Centrale / role: client
+   - client2@pharma.td / Clinique Al Amal / role: client
+
+2. Collections → clients → lier les comptes client avec user_id
+
+3. Collections → medicaments → Quelques médicaments
+   (Paracétamol, Amoxicilline, Doliprane, Ibuprofen...)
+
+4. Collections → lots → Pour chaque médicament, 2-3 lots
+   de pays différents (Cameroun à 500 FCFA, France à 800 FCFA)
+
+=======================================================
