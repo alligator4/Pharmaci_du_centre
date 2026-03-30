@@ -56,7 +56,7 @@ export function exportStockToExcel(stocks: any[], lots: any[]) {
 export function exportVentesToExcel(items: any[]) {
   const data = items.map(item => ({
     'Date': format(new Date(item.created || item.commande?.date_commande), 'dd/MM/yyyy'),
-    'N° Commande': item.expand?.commande?.numero_facture || item.commande?.slice(-8) || '',
+    'N° Commande': item.expand?.commande?.numero_facture || item.commande?.numero_facture || (typeof item.commande === 'string' ? item.commande.slice(-8) : '') || '',
     'Client': item.expand?.commande?.expand?.client?.nom || '',
     'Médicament': item.expand?.medicament?.nom || '',
     'Code': item.expand?.medicament?.code || '',

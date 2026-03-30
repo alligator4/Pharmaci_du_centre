@@ -12,12 +12,14 @@ const ROLES: { value: UserRole; label: string; desc: string }[] = [
   { value: 'admin', label: 'Admin', desc: 'Gestion complète sauf utilisateurs' },
   { value: 'employe', label: 'Employé', desc: 'Stock, ventes, paiements' },
   { value: 'client', label: 'Client', desc: 'Catalogue + commandes uniquement' },
+  { value: 'livreur', label: 'Livreur', desc: 'Livraisons + preuve de dépôt' },
 ]
 const roleColors: Record<string, string> = {
   superadmin: 'bg-red-100 text-red-700',
   admin: 'bg-purple-100 text-purple-700',
   employe: 'bg-teal-100 text-teal-700',
   client: 'bg-blue-100 text-blue-700',
+  livreur: 'bg-amber-100 text-amber-700',
 }
 
 export default function Utilisateurs() {
@@ -80,18 +82,37 @@ export default function Utilisateurs() {
       if (!signUpData.user) { toast.error('Compte non créé'); setSaving(false); setSaveStep(''); return }
 
       setSaveStep('Mise à jour du profil…')
-      await new Promise(r => setTimeout(r, 2000))
+
+      // Attendre que le trigger handle_new_user crée le profil (polling max 5s)
+      let profileReady = false
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 500))
+        const { data: p } = await supabase.from('profiles').select('id').eq('id', signUpData.user.id).single()
+        if (p) { profileReady = true; break }
+      }
 
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ name: form.name, role: form.role, actif: true })
         .eq('id', signUpData.user.id)
 
-      if (updateError) {
+      if (updateError || !profileReady) {
         await supabase.from('profiles').insert({ id: signUpData.user.id, name: form.name, email: form.email, role: form.role, actif: true })
       }
 
-      toast.success(`✓ Compte "${form.name}" créé !\nEmail: ${form.email}\nMdp: ${form.password}`, { duration: 8000 })
+
+      // Si le rôle est "client", créer automatiquement la fiche client liée
+      if (form.role === 'client') {
+        setSaveStep('Création de la fiche client…')
+        await supabase.from('clients').insert({
+          nom: form.name,
+          email: form.email,
+          user_id: signUpData.user.id,
+          actif: true,
+        })
+      }
+      await navigator.clipboard.writeText(`Email: ${form.email}\nMot de passe: ${form.password}`).catch(() => {})
+      toast.success(`✓ Compte "${form.name}" créé ! Identifiants copiés dans le presse-papier.`, { duration: 6000 })
       setShowModal(false); setSaveStep(''); fetchProfiles()
     }
     setSaving(false); setSaveStep('')

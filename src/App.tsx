@@ -15,6 +15,10 @@ import Alertes from './pages/alertes/Alertes'
 import Utilisateurs from './pages/users/Utilisateurs'
 import Catalogue from './pages/portal/Catalogue'
 import MesCommandes from './pages/portal/MesCommandes'
+import Promotions from './pages/promotions/Promotions'
+import Livraisons from './pages/livraisons/Livraisons'
+import RapportsClients from './pages/rapports/RapportsClients'
+import ClickCollect from './pages/portal/ClickCollect'
 
 function ProtectedRoute({ children, roles }: { children: React.ReactElement; roles?: string[] }) {
   const { profile, loading } = useAuth()
@@ -28,8 +32,9 @@ function ProtectedRoute({ children, roles }: { children: React.ReactElement; rol
   if (!profile) return <Navigate to="/login" replace />
 
   if (roles && !roles.includes(profile.role)) {
-    const redirect = profile.role === 'client' ? '/catalogue' : '/dashboard'
-    return <Navigate to={redirect} replace />
+    if (profile.role === 'client') return <Navigate to="/catalogue" replace />
+    if (profile.role === 'livreur') return <Navigate to="/livraisons" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return children
@@ -48,82 +53,97 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
 
+      {/* Staff */}
       <Route path="/dashboard" element={
         <ProtectedRoute roles={['superadmin','admin','employe']}>
           <Dashboard />
         </ProtectedRoute>
       } />
-
       <Route path="/medicaments" element={
         <ProtectedRoute roles={['superadmin','admin']}>
           <Medicaments />
         </ProtectedRoute>
       } />
-
       <Route path="/stock" element={
         <ProtectedRoute roles={['superadmin','admin','employe']}>
           <Stock />
         </ProtectedRoute>
       } />
-
       <Route path="/arrivages" element={
         <ProtectedRoute roles={['superadmin','admin','employe']}>
           <Arrivages />
         </ProtectedRoute>
       } />
-
       <Route path="/commandes" element={
         <ProtectedRoute roles={['superadmin','admin','employe']}>
           <Commandes />
         </ProtectedRoute>
       } />
-
+      <Route path="/livraisons" element={
+        <ProtectedRoute roles={['superadmin','admin','employe','livreur']}>
+          <Livraisons />
+        </ProtectedRoute>
+      } />
       <Route path="/clients" element={
         <ProtectedRoute roles={['superadmin','admin']}>
           <Clients />
         </ProtectedRoute>
       } />
-
       <Route path="/paiements" element={
         <ProtectedRoute roles={['superadmin','admin','employe']}>
           <Paiements />
         </ProtectedRoute>
       } />
-
+      <Route path="/promotions" element={
+        <ProtectedRoute roles={['superadmin','admin']}>
+          <Promotions />
+        </ProtectedRoute>
+      } />
       <Route path="/rapports" element={
         <ProtectedRoute roles={['superadmin','admin']}>
           <Rapports />
         </ProtectedRoute>
       } />
-
+      <Route path="/rapports-clients" element={
+        <ProtectedRoute roles={['superadmin','admin']}>
+          <RapportsClients />
+        </ProtectedRoute>
+      } />
       <Route path="/alertes" element={
         <ProtectedRoute roles={['superadmin','admin','employe']}>
           <Alertes />
         </ProtectedRoute>
       } />
-
       <Route path="/utilisateurs" element={
         <ProtectedRoute roles={['superadmin']}>
           <Utilisateurs />
         </ProtectedRoute>
       } />
 
+      {/* Portail client */}
       <Route path="/catalogue" element={
         <ProtectedRoute roles={['client']}>
           <Catalogue />
         </ProtectedRoute>
       } />
-
+      <Route path="/click-collect" element={
+        <ProtectedRoute roles={['client']}>
+          <ClickCollect />
+        </ProtectedRoute>
+      } />
       <Route path="/mes-commandes" element={
         <ProtectedRoute roles={['client']}>
           <MesCommandes />
         </ProtectedRoute>
       } />
 
+      {/* Redirections par défaut selon rôle */}
       <Route path="/" element={
         profile?.role === 'client'
           ? <Navigate to="/catalogue" replace />
-          : <Navigate to="/dashboard" replace />
+          : profile?.role === 'livreur'
+            ? <Navigate to="/livraisons" replace />
+            : <Navigate to="/dashboard" replace />
       } />
 
       <Route path="*" element={<Navigate to="/" replace />} />

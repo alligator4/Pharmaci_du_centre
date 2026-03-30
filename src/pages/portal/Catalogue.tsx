@@ -21,8 +21,18 @@ export default function Catalogue() {
     if (profile) {
       fetchData()
       fetchClient()
+      try {
+        const saved = localStorage.getItem(`pharma_cart_${profile.id}`)
+        if (saved) setCart(JSON.parse(saved))
+      } catch { /* ignore */ }
     }
   }, [profile])
+
+  useEffect(() => {
+    if (profile) {
+      localStorage.setItem(`pharma_cart_${profile.id}`, JSON.stringify(cart))
+    }
+  }, [cart, profile])
 
   async function fetchData() {
     setLoading(true)
@@ -104,41 +114,62 @@ export default function Catalogue() {
     if (cart.length === 0) { toast.error('Panier vide'); return }
     setPlacing(true)
 
+    let commandeId: string | null = null
+
     try {
-      const { data: commande, error: cmdError } = await supabase.from('commandes').insert({
-        client_id: clientId,
-        date_commande: new Date().toISOString(),
-        total: getTotal(),
-        statut: 'en_attente',
-        statut_paiement: 'en_attente',
-        numero_facture: `FAC-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`,
-      }).select().single()
+      // 1. Créer la commande
+      const { data: commande, error: cmdError } = await supabase
+        .from('commandes')
+        .insert({
+          client_id: clientId,
+          date_commande: new Date().toISOString(),
+          total: getTotal(),
+          statut: 'en_attente',
+          statut_paiement: 'en_attente',
+          numero_facture: `FAC-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`,
+        })
+        .select()
+        .single()
 
       if (cmdError || !commande) throw new Error(cmdError?.message || 'Erreur création commande')
+      commandeId = commande.id
 
-      await Promise.all(cart.map(item =>
-        supabase.from('commande_items').insert({
+      // 2. Insérer les items un par un en vérifiant chaque erreur
+      for (const item of cart) {
+        const { data: insertedItem, error: itemError } = await supabase.from('commande_items').insert({
           commande_id: commande.id,
           medicament_id: item.medicament.id,
           quantite: item.quantite,
           prix_unitaire: item.prix_unitaire,
-        })
-      ))
+        }).select()
+        if (itemError) throw new Error(`Article "${item.medicament.nom}" : ${itemError.message}`)
+      }
 
+      // 3. Déduire le stock FIFO
       for (const item of cart) {
-        await supabase.rpc('deduct_fifo_stock', {
+        const { error: stockError } = await supabase.rpc('deduct_fifo_stock', {
           p_medicament_id: item.medicament.id,
-          p_qty: item.quantite,
+          p_quantite: item.quantite,
         })
+        if (stockError) throw new Error(`Déduction stock "${item.medicament.nom}" : ${stockError.message}`)
       }
 
       toast.success('Commande envoyée ! Un agent va la traiter.')
       setCart([])
       setShowCart(false)
       fetchData()
+      commandeId = null // succès, pas de rollback nécessaire
+
     } catch (err: any) {
-      toast.error('Erreur lors de la commande: ' + err.message)
+      // Rollback : annuler la commande si elle a été créée mais que les items ont échoué
+      if (commandeId) {
+        await supabase.from('commandes')
+          .update({ statut: 'annulee', notes: 'Erreur technique à la création' })
+          .eq('id', commandeId)
+      }
+      toast.error('Erreur : ' + err.message)
     }
+
     setPlacing(false)
   }
 

@@ -2,7 +2,7 @@ import { Menu, Bell, LogOut, Cross, KeyRound } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import ChangePasswordModal from './ChangePasswordModal'
+import ChangePasswordModal from '../ChangePasswordModal'
 
 interface HeaderProps {
   onMenuClick: () => void

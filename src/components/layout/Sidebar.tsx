@@ -2,7 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   LayoutDashboard, Package, TruckIcon, ShoppingCart, Users, CreditCard,
-  BarChart3, Settings, Pill, AlertTriangle, X, ShoppingBag, Activity, Cross
+  BarChart3, Settings, Pill, AlertTriangle, X, ShoppingBag, Activity, Cross,
+  Tag, Truck, UserCheck, PackageCheck
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -16,27 +17,36 @@ const navItems = [
   { path: '/stock', label: 'Stock & Lots', icon: Package, roles: ['superadmin','admin','employe'] },
   { path: '/arrivages', label: 'Arrivages', icon: TruckIcon, roles: ['superadmin','admin','employe'] },
   { path: '/commandes', label: 'Commandes', icon: ShoppingCart, roles: ['superadmin','admin','employe'] },
+  { path: '/livraisons', label: 'Livraisons', icon: Truck, roles: ['superadmin','admin','employe'] },
   { path: '/clients', label: 'Clients', icon: Users, roles: ['superadmin','admin'] },
   { path: '/paiements', label: 'Paiements', icon: CreditCard, roles: ['superadmin','admin','employe'] },
-  { path: '/rapports', label: 'Rapports', icon: BarChart3, roles: ['superadmin','admin'] },
+  { path: '/promotions', label: 'Promotions', icon: Tag, roles: ['superadmin','admin'] },
+  { path: '/rapports', label: 'Rapports ventes', icon: BarChart3, roles: ['superadmin','admin'] },
+  { path: '/rapports-clients', label: 'Rapports clients', icon: UserCheck, roles: ['superadmin','admin'] },
   { path: '/alertes', label: 'Alertes', icon: AlertTriangle, roles: ['superadmin','admin','employe'] },
   { path: '/utilisateurs', label: 'Utilisateurs', icon: Settings, roles: ['superadmin'] },
 ]
 
+const livreurNavItems = [
+  { path: '/livraisons', label: 'Mes livraisons', icon: Truck, roles: ['livreur'] },
+]
+
 const clientNavItems = [
   { path: '/catalogue', label: 'Catalogue', icon: ShoppingBag, roles: ['client'] },
+  { path: '/click-collect', label: 'Click & Collect', icon: PackageCheck, roles: ['client'] },
   { path: '/mes-commandes', label: 'Mes Commandes', icon: ShoppingCart, roles: ['client'] },
 ]
 
 const roleLabel: Record<string, string> = {
   superadmin: 'Super Admin', admin: 'Administrateur',
-  employe: 'Employé', client: 'Client'
+  employe: 'Employé', client: 'Client', livreur: 'Livreur',
 }
 const roleBg: Record<string, string> = {
   superadmin: 'bg-red-500/20 text-red-300 border border-red-500/30',
   admin: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
   employe: 'bg-teal-500/20 text-teal-300 border border-teal-500/30',
   client: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+  livreur: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
 }
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
@@ -44,9 +54,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const location = useLocation()
 
   const isClient = profile?.role === 'client'
+  const isLivreur = profile?.role === 'livreur'
   const items = isClient
     ? clientNavItems
-    : navItems.filter(i => profile && i.roles.includes(profile.role))
+    : isLivreur
+      ? livreurNavItems
+      : navItems.filter(i => profile && i.roles.includes(profile.role))
 
   return (
     <>

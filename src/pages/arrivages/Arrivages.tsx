@@ -36,6 +36,7 @@ export default function Arrivages() {
     if (form.prix_achat <= 0) { toast.error("Prix d'achat invalide"); return }
     if (form.quantite <= 0) { toast.error('Quantité invalide'); return }
     if (!form.date_expiration) { toast.error("Date d'expiration requise"); return }
+    if (form.date_expiration <= form.date_reception) { toast.error("La date d'expiration doit être postérieure à la date de réception"); return }
     if (!form.numero_lot.trim()) { toast.error('Numéro de lot requis'); return }
 
     setSaving(true)

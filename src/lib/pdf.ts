@@ -102,18 +102,29 @@ export async function generateFacturePDF(commande: any): Promise<string> {
   const pdfBlob = doc.output('blob')
   const fileName = `facture-${commande.numero_facture || commande.id.slice(-8)}-${Date.now()}.pdf`
 
+  let publicUrl: string | null = null
   try {
     const { data: uploadData } = await supabase.storage
       .from('factures')
       .upload(fileName, pdfBlob, { contentType: 'application/pdf' })
-
     if (uploadData) {
-      const { data: { publicUrl } } = supabase.storage.from('factures').getPublicUrl(uploadData.path)
+      const { data } = supabase.storage.from('factures').getPublicUrl(uploadData.path)
+      publicUrl = data.publicUrl
       await supabase.from('commandes').update({ facture_url: publicUrl }).eq('id', commande.id)
     }
-  } catch {
-    // Storage optionnel, continuer sans
-  }
+  } catch { /* Storage optionnel */ }
 
-  return URL.createObjectURL(pdfBlob)
+  // Retourner l'URL publique si disponible (fonctionne sur mobile),
+  // sinon déclencher un téléchargement direct
+  if (publicUrl) return publicUrl
+
+  // Fallback : téléchargement forcé sans window.open
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(pdfBlob)
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  return link.href
+
 }

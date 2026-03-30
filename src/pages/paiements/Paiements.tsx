@@ -32,7 +32,7 @@ export default function Paiements() {
         commande_id: commande.id, montant: commande.total,
         mode_paiement: 'cash', date_paiement: new Date().toISOString(), enregistre_par: user?.id,
       })
-      await supabase.from('commandes').update({ statut_paiement: 'paye', statut: 'livree' }).eq('id', commande.id)
+      await supabase.from('commandes').update({ statut_paiement: 'paye' }).eq('id', commande.id)
       toast.success('Paiement confirmé')
       fetchData()
     } catch { toast.error('Erreur confirmation') }
